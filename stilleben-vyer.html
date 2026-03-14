@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stilleben — 8 Vyer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #1a1a2e; color: #e0e0e0; font-family: 'Segoe UI', system-ui, sans-serif; overflow: hidden; height: 100vh; }
+  #app { display: flex; flex-direction: column; height: 100vh; }
+  header { text-align: center; padding: 12px 20px 10px; background: #16213e; border-bottom: 1px solid #0f3460; position: relative; }
+  header h1 { font-size: 1.2rem; font-weight: 300; letter-spacing: 2px; }
+  #course-info {
+    background: rgba(40,55,85,0.7); border: 1px solid #0f3460; border-radius: 10px;
+    padding: 10px 18px; position: absolute; left: 20px; top: 50%; transform: translateY(-50%);
+  }
+  #course-info .course { font-size: 0.7rem; color: #ffffff; letter-spacing: 3px; text-transform: uppercase; font-weight: 700; }
+  #course-info .teacher { font-size: 0.8rem; color: #ffffff; margin-top: 4px; font-weight: 400; letter-spacing: 0.5px; }
+  #course-info .school { font-size: 0.7rem; color: #ffffff; margin-top: 2px; letter-spacing: 1px; }
+  header p { font-size: 0.95rem; color: #999; margin-top: 4px; padding-bottom: 4px; letter-spacing: 1px; }
+
+  #main-row { flex: 1; display: flex; min-height: 0; }
+
+  /* LEFT PANEL — 3D Scene */
+  #left-panel { flex: 1; position: relative; overflow: hidden; }
+  #left-panel canvas { display: block; width: 100%; height: 100%; }
+  #info-overlay {
+    display: none;
+  }
+  #info-bottom {
+    width: 220px; text-align: left; white-space: nowrap;
+    background: rgba(15,52,96,0.35);
+    padding: 12px 18px; border-radius: 10px; font-size: 0.85rem; color: #dde4ee;
+    border: 2px solid rgba(233,69,96,0.4); line-height: 1.7;
+  }
+  #info-bottom span { color: #ff6b8a; font-weight: 700; font-size: 0.95rem; }
+  #info-overlay span { color: #e94560; font-weight: 600; }
+  #auto-btn {
+    position: absolute; top: 10px; right: 12px; padding: 5px 12px; border-radius: 14px;
+    border: 1px solid #0f3460; background: #1a1a2e; color: #aaa; font-size: 0.7rem; cursor: pointer; transition: all 0.3s;
+  }
+  #auto-btn:hover, #auto-btn.active { border-color: #e94560; color: #fff; background: #e94560; }
+  #light-label {
+    position: absolute; top: 40px; right: 12px;
+    font-size: 0.6rem; color: #ffffff; letter-spacing: 1px; text-transform: uppercase;
+    font-weight: 600; text-align: right;
+  }
+  #light-toggle {
+    position: absolute; top: 56px; right: 12px; display: flex; border-radius: 16px;
+    overflow: hidden; border: 2px solid #0f3460;
+  }
+  .light-btn {
+    padding: 5px 12px; border: none; background: #1a1a2e; color: #777; font-size: 0.7rem;
+    cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 5px;
+  }
+  .light-btn:first-child { border-right: 1px solid #0f3460; }
+  .light-btn:hover { color: #ccc; background: #0f3460; }
+  .light-btn.active { background: #e94560; color: #fff; }
+  .light-btn .icon { font-size: 0.95rem; }
+  #angle-label {
+    position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+    background: rgba(22,33,62,0.95); padding: 6px 16px; border-radius: 16px;
+    font-size: 0.75rem; color: #e94560; font-weight: 600; letter-spacing: 1px;
+    pointer-events: none; border: 1px solid #0f3460; white-space: nowrap;
+  }
+
+  /* Brightness slider */
+  #brightness-label {
+    position: absolute; top: 104px; right: 12px;
+    font-size: 0.6rem; color: #ffffff; letter-spacing: 1px; text-transform: uppercase;
+    font-weight: 600; text-align: right;
+  }
+  #brightness-wrap {
+    position: absolute; top: 120px; right: 12px;
+    display: flex; align-items: center; gap: 8px;
+    z-index: 10;
+  }
+  #brightness-wrap label {
+    font-size: 0.6rem; color: #aaa; letter-spacing: 1px; user-select: none;
+  }
+  #brightness-icon { font-size: 1.2rem; color: #ffd060; }
+  #brightness-slider {
+    -webkit-appearance: none; appearance: none;
+    width: 120px; height: 6px; background: rgba(255,255,255,0.4); border-radius: 3px; outline: none;
+    cursor: pointer;
+  }
+  #brightness-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: #e94560; border: 2px solid #fff; cursor: pointer;
+  }
+  #brightness-slider::-moz-range-thumb {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: #e94560; border: 2px solid #fff; cursor: pointer;
+  }
+  #brightness-val { font-size: 0.75rem; color: #aaa; user-select: none; }
+
+  /* Object toggle panel */
+  #obj-panel {
+    position: absolute; top: 10px; left: 10px; z-index: 10;
+    background: rgba(22,33,62,0.92); border: 1px solid #0f3460; border-radius: 10px;
+    padding: 8px 10px; max-height: 60%; overflow-y: auto;
+  }
+  #obj-panel-title {
+    font-size: 0.6rem; color: #888; letter-spacing: 1px; text-transform: uppercase;
+    margin-bottom: 6px; text-align: center; user-select: none;
+  }
+  #obj-panel label {
+    display: flex; align-items: center; gap: 6px; padding: 3px 2px;
+    font-size: 0.68rem; color: #ccc; cursor: pointer; user-select: none;
+    transition: color 0.2s;
+  }
+  #obj-panel label:hover { color: #fff; }
+  #obj-panel input[type="checkbox"] {
+    accent-color: #e94560; width: 13px; height: 13px; cursor: pointer;
+  }
+  .obj-color {
+    display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.3); flex-shrink: 0;
+  }
+  #obj-panel hr {
+    border: none; border-top: 1px solid #0f3460; margin: 5px 0;
+  }
+  #obj-toggle-all {
+    display: block; width: 100%; margin-top: 4px; padding: 4px 6px;
+    border-radius: 8px; border: 1px solid #0f3460; background: #1a1a2e;
+    color: #aaa; font-size: 0.6rem; cursor: pointer; transition: all 0.2s;
+    text-align: center;
+  }
+  #obj-toggle-all:hover { border-color: #e94560; color: #fff; }
+
+  /* RIGHT PANEL — Sketch Paper */
+  #right-panel {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    background: #ede8e0; position: relative;
+  }
+  #paper-wrap {
+    position: relative; background: #faf8f5;
+    box-shadow: 3px 5px 18px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.06);
+    border-radius: 2px; overflow: hidden;
+  }
+  #sketch { display: block; }
+  #sketch-nav {
+    position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+    display: flex; flex-direction: column; gap: 8px; z-index: 10;
+  }
+  .sk-btn {
+    width: 52px; padding: 8px 4px; border-radius: 10px; border: 2px solid #bbb;
+    background: #fff; color: #555; font-size: 0.65rem; font-weight: 700;
+    cursor: pointer; transition: all 0.3s; text-align: center; line-height: 1.3;
+  }
+  .sk-btn:hover { border-color: #e94560; color: #333; }
+  .sk-btn.active { border-color: #e94560; background: #e94560; color: #fff; box-shadow: 0 2px 8px rgba(233,69,96,0.3); }
+  .sk-btn .num { font-size: 1.1rem; display: block; margin-bottom: 2px; }
+  #sketch-label {
+    position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,0.06); padding: 4px 14px; border-radius: 12px;
+    font-size: 0.7rem; color: #000; font-weight: 600; pointer-events: none; white-space: nowrap;
+  }
+
+  /* Instructions panel */
+  #instructions {
+    background: rgba(15,52,96,0.3); border: 1px solid #0f3460; border-radius: 10px;
+    padding: 14px 22px; white-space: nowrap;
+  }
+  #instructions h3 {
+    font-size: 0.75rem; color: #8899aa; letter-spacing: 2px; text-transform: uppercase;
+    margin-bottom: 10px; font-weight: 700;
+  }
+  #instructions ul {
+    list-style: none; padding: 0; margin: 0;
+  }
+  #instructions li {
+    font-size: 0.78rem; color: #c0b8a8; line-height: 1.5; padding: 4px 0 4px 16px;
+    position: relative; font-style: italic;
+  }
+  #instructions li::before {
+    content: '•'; position: absolute; left: 0; color: #e94560; font-style: normal; font-weight: 700;
+  }
+
+  /* BOTTOM — Compass */
+  #controls {
+    display: flex; align-items: center; justify-content: center; gap: 30px; padding: 10px 20px;
+    background: #16213e; border-top: 1px solid #0f3460;
+  }
+  #compass-wrap {
+    display: flex; flex-direction: column; align-items: center; margin-top: 8px;
+  }
+  #controls-label {
+    font-size: 1.1rem; color: #ffffff; letter-spacing: 5px; text-transform: uppercase;
+    margin-bottom: 4px; font-weight: 700; z-index: 1;
+  }
+  #controls-sublabel {
+    font-size: 0.65rem; color: rgba(255,255,255,0.7); letter-spacing: 1px;
+    margin-bottom: 2px; z-index: 1;
+  }
+  #compass { width: 240px; height: 240px; flex-shrink: 0; }
+  #compass svg { width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div id="course-info">
+      <div class="course">Kurs: Teckning</div>
+      <div class="teacher">Kursledare: Matilda Lövgren</div>
+      <div class="school">Folkuniversitetet</div>
+    </div>
+    <h1>STILLEBEN — 8 VYER</h1>
+    <p>Studera former, skuggor och proportioner från olika vinklar</p>
+  </header>
+  <div id="main-row">
+    <!-- LEFT: 3D Scene -->
+    <div id="left-panel">
+      <canvas id="scene"></canvas>
+      <div id="info-overlay">
+        <div>Vy: <span id="info-view">Framifrån</span></div>
+        <div>Vinkel: <span id="info-angle">0°</span></div>
+        <div>Ljus: <span id="info-light">Ficklampa</span></div>
+      </div>
+      <button id="auto-btn">&#9654; Auto</button>
+      <div id="light-label">Ändra ljusriktning</div>
+      <div id="light-toggle">
+        <button class="light-btn active" id="btn-lamp"><span class="icon">&#128294;</span> Lampa</button>
+        <button class="light-btn" id="btn-sun"><span class="icon">&#9728;&#65039;</span> Sol</button>
+      </div>
+      <div id="brightness-label">Ändra ljusstyrka</div>
+      <div id="brightness-wrap">
+        <span id="brightness-icon">&#9728;</span>
+        <input type="range" id="brightness-slider" min="10" max="200" value="100" step="5">
+        <span id="brightness-val">100%</span>
+      </div>
+      <div id="obj-panel">
+        <div id="obj-panel-title">Objekt</div>
+        <label><input type="checkbox" checked data-obj="vase"><span class="obj-color" style="background:#b85c38"></span>Vas &amp; blommor</label>
+        <label><input type="checkbox" checked data-obj="apple"><span class="obj-color" style="background:#4a8f4a"></span>Äpple</label>
+        <label><input type="checkbox" checked data-obj="box"><span class="obj-color" style="background:#f0ede8"></span>Box</label>
+        <label><input type="checkbox" checked data-obj="cone"><span class="obj-color" style="background:#c4a35a"></span>Kon</label>
+        <label><input type="checkbox" checked data-obj="bottle"><span class="obj-color" style="background:#2e5e4e"></span>Flaska</label>
+        <label><input type="checkbox" checked data-obj="lemon"><span class="obj-color" style="background:#f0d030"></span>Citron</label>
+        <label><input type="checkbox" checked data-obj="pyramid"><span class="obj-color" style="background:#2a2a2a"></span>Pyramid</label>
+        <label><input type="checkbox" checked data-obj="cup"><span class="obj-color" style="background:#c0281e"></span>Kaffekopp</label>
+        <hr>
+        <button id="obj-toggle-all">Dölj alla</button>
+      </div>
+      <div id="angle-label">Framifrån — 0°</div>
+    </div>
+    <!-- RIGHT: Sketch Paper -->
+    <div id="right-panel">
+      <div id="paper-wrap">
+        <canvas id="sketch"></canvas>
+      </div>
+      <div id="sketch-nav">
+        <button class="sk-btn active" id="sk-1"><span class="num">1</span>Konturer</button>
+        <button class="sk-btn" id="sk-2"><span class="num">2</span>Skuggor</button>
+        <button class="sk-btn" id="sk-3"><span class="num">3</span>Båda</button>
+      </div>
+      <div id="sketch-label">Konturer — siluettlinjer</div>
+    </div>
+  </div>
+  <div id="controls">
+    <div id="instructions">
+      <h3>Rittips</h3>
+      <ul>
+        <li>Använd olika pennor — blyerts, kol — från svart till vitt med olika värden</li>
+        <li>Låt ljusfälten bygga upp bilden, ibland med konturer</li>
+        <li>Notera själv- och slagskuggor</li>
+        <li>Använd syftningsmetoder och pennan för relativa avstånd</li>
+        <li>Fokusera på kontraster och överdriv dom!</li>
+        <li>Testa att sudda fram ljuset</li>
+      </ul>
+    </div>
+    <div id="info-bottom">
+      <div>Vy: <span id="info-view2">Framifrån</span></div>
+      <div>Vinkel: <span id="info-angle2">0°</span></div>
+      <div>Ljus: <span id="info-light2">Ficklampa</span></div>
+    </div>
+    <div id="compass-wrap">
+      <div id="controls-label">ROTERA</div>
+      <div id="controls-sublabel">Klicka på pilarna</div>
+      <div id="compass"><svg viewBox="-30 -30 260 260" id="compass-svg"></svg></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// =============================================
+//  STATE
+// =============================================
+const views = [
+  { name: 'Framifrån',        angle: 0,   short: 'FRAM' },
+  { name: 'Snett höger-fram', angle: 45,  short: 'SHF' },
+  { name: 'Från höger',       angle: 90,  short: 'HÖGER' },
+  { name: 'Snett höger-bak',  angle: 135, short: 'SHB' },
+  { name: 'Bakifrån',         angle: 180, short: 'BAK' },
+  { name: 'Snett vänster-bak',angle: 225, short: 'SVB' },
+  { name: 'Från vänster',     angle: 270, short: 'VÄN' },
+  { name: 'Snett vänster-fram',angle: 315,short: 'SVF' },
+];
+let currentView = 0, targetAngle = 0, currentAngle = 0;
+let autoRotate = false, autoTimer = null;
+let lightMode = 'lamp';
+let sketchMode = 1; // 1 = konturer, 2 = skuggor
+
+// =============================================
+//  MAIN 3D RENDERER
+// =============================================
+const leftPanel = document.getElementById('left-panel');
+const mainCanvas = document.getElementById('scene');
+const renderer = new THREE.WebGLRenderer({ canvas: mainCanvas, antialias: true });
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.setClearColor(0x2e3b20);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x2e3b20, 0.015);
+const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+const cameraRadius = 8, cameraHeight = 4.5;
+
+// =============================================
+//  SKETCH RENDERER (right panel)
+// =============================================
+const rightPanel = document.getElementById('right-panel');
+const paperWrap = document.getElementById('paper-wrap');
+const sketchCanvas = document.getElementById('sketch');
+const sketchRenderer = new THREE.WebGLRenderer({ canvas: sketchCanvas, antialias: true });
+sketchRenderer.shadowMap.enabled = true;
+sketchRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
+sketchRenderer.setClearColor(0xfaf8f5);
+
+// Render targets
+let sketchRT, shadowRT;
+// Post-processing scene for edge detection
+const ppScene = new THREE.Scene();
+const ppCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+const edgeMaterial = new THREE.ShaderMaterial({
+  uniforms: {
+    tDiffuse: { value: null },
+    resolution: { value: new THREE.Vector2(1, 1) },
+    thickness: { value: 1.2 }
+  },
+  vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
+  fragmentShader: `
+    uniform sampler2D tDiffuse;
+    uniform vec2 resolution;
+    uniform float thickness;
+    varying vec2 vUv;
+    void main() {
+      vec2 tx = thickness / resolution;
+      float tl = texture2D(tDiffuse, vUv + vec2(-tx.x, tx.y)).r;
+      float t  = texture2D(tDiffuse, vUv + vec2(0.0, tx.y)).r;
+      float tr = texture2D(tDiffuse, vUv + vec2(tx.x, tx.y)).r;
+      float l  = texture2D(tDiffuse, vUv + vec2(-tx.x, 0.0)).r;
+      float r  = texture2D(tDiffuse, vUv + vec2(tx.x, 0.0)).r;
+      float bl = texture2D(tDiffuse, vUv + vec2(-tx.x, -tx.y)).r;
+      float b  = texture2D(tDiffuse, vUv + vec2(0.0, -tx.y)).r;
+      float br = texture2D(tDiffuse, vUv + vec2(tx.x, -tx.y)).r;
+      float gx = -tl - 2.0*l - bl + tr + 2.0*r + br;
+      float gy = tl + 2.0*t + tr - bl - 2.0*b - br;
+      float edge = length(vec2(gx, gy));
+      edge = smoothstep(0.03, 0.15, edge);
+      // Pencil-like: soften edges slightly
+      float pencil = edge * 0.85;
+      vec3 paper = vec3(0.98, 0.97, 0.96);
+      vec3 ink = vec3(0.12, 0.10, 0.10);
+      gl_FragColor = vec4(mix(paper, ink, pencil), 1.0);
+    }
+  `
+});
+const ppQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), edgeMaterial);
+ppScene.add(ppQuad);
+
+// Combine shader for mode 3: edges over shadows
+const combineScene = new THREE.Scene();
+const combineMaterial = new THREE.ShaderMaterial({
+  uniforms: {
+    tEdges: { value: null },
+    tShadow: { value: null },
+    resolution: { value: new THREE.Vector2(1, 1) },
+    thickness: { value: 1.2 }
+  },
+  vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
+  fragmentShader: `
+    uniform sampler2D tEdges;
+    uniform sampler2D tShadow;
+    uniform vec2 resolution;
+    uniform float thickness;
+    varying vec2 vUv;
+    void main() {
+      // Edge detection on silhouette texture
+      vec2 tx = thickness / resolution;
+      float tl = texture2D(tEdges, vUv + vec2(-tx.x, tx.y)).r;
+      float t  = texture2D(tEdges, vUv + vec2(0.0, tx.y)).r;
+      float tr = texture2D(tEdges, vUv + vec2(tx.x, tx.y)).r;
+      float l  = texture2D(tEdges, vUv + vec2(-tx.x, 0.0)).r;
+      float r  = texture2D(tEdges, vUv + vec2(tx.x, 0.0)).r;
+      float bl = texture2D(tEdges, vUv + vec2(-tx.x, -tx.y)).r;
+      float b  = texture2D(tEdges, vUv + vec2(0.0, -tx.y)).r;
+      float br = texture2D(tEdges, vUv + vec2(tx.x, -tx.y)).r;
+      float gx = -tl - 2.0*l - bl + tr + 2.0*r + br;
+      float gy = tl + 2.0*t + tr - bl - 2.0*b - br;
+      float edge = length(vec2(gx, gy));
+      edge = smoothstep(0.03, 0.15, edge) * 0.85;
+
+      // Shadow layer
+      vec3 shadow = texture2D(tShadow, vUv).rgb;
+
+      // Combine: start with shadow, darken with edges
+      vec3 paper = vec3(0.98, 0.97, 0.96);
+      vec3 ink = vec3(0.12, 0.10, 0.10);
+      // Shadow darkening
+      float shadowDark = 1.0 - (dot(paper - shadow, vec3(0.333)) * 2.5);
+      shadowDark = clamp(shadowDark, 0.0, 1.0);
+      vec3 base = mix(paper, vec3(0.78, 0.76, 0.74), 1.0 - shadowDark);
+      // Overlay edges
+      vec3 result = mix(base, ink, edge);
+      gl_FragColor = vec4(result, 1.0);
+    }
+  `
+});
+const combineQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), combineMaterial);
+combineScene.add(combineQuad);
+
+// =============================================
+//  RESIZE
+// =============================================
+function resize() {
+  // Left panel
+  const lw = leftPanel.clientWidth, lh = leftPanel.clientHeight;
+  renderer.setSize(lw, lh);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  camera.aspect = lw / lh;
+  camera.updateProjectionMatrix();
+
+  // Right panel — paper sized to fit with padding
+  const rw = rightPanel.clientWidth, rh = rightPanel.clientHeight;
+  const pad = 80;
+  const pw = rw - pad, ph = rh - pad;
+  // Maintain ~4:3 aspect
+  let paperW, paperH;
+  if (pw / ph > 4/3) { paperH = ph; paperW = ph * 4/3; }
+  else { paperW = pw; paperH = pw * 3/4; }
+  paperW = Math.floor(paperW); paperH = Math.floor(paperH);
+  paperWrap.style.width = paperW + 'px';
+  paperWrap.style.height = paperH + 'px';
+  sketchRenderer.setSize(paperW, paperH);
+  sketchRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+  // Update render targets
+  const dpr = Math.min(window.devicePixelRatio, 2);
+  if (sketchRT) sketchRT.dispose();
+  if (shadowRT) shadowRT.dispose();
+  sketchRT = new THREE.WebGLRenderTarget(paperW * dpr, paperH * dpr);
+  shadowRT = new THREE.WebGLRenderTarget(paperW * dpr, paperH * dpr);
+  edgeMaterial.uniforms.resolution.value.set(paperW * dpr, paperH * dpr);
+  combineMaterial.uniforms.resolution.value.set(paperW * dpr, paperH * dpr);
+}
+resize();
+window.addEventListener('resize', resize);
+
+// =============================================
+//  BASE LIGHTING
+// =============================================
+const ambient = new THREE.AmbientLight(0x404060, 0.3);
+scene.add(ambient);
+const fillLight = new THREE.DirectionalLight(0xb0c4de, 0.15);
+fillLight.position.set(3, 3, -2); scene.add(fillLight);
+const rimLight = new THREE.PointLight(0xe94560, 0.2, 12);
+rimLight.position.set(0, 5, -4); scene.add(rimLight);
+
+// =============================================
+//  LAMP MODE — visuals + light separated
+// =============================================
+const lampVisuals = new THREE.Group();
+
+const flashlightGroup = new THREE.Group();
+const flBodyMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.25, metalness: 0.9 });
+flashlightGroup.add(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.045, 0.32, 24), flBodyMat));
+const ringMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.3, metalness: 0.95 });
+for (let ri = -2; ri <= 2; ri++) {
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.046, 0.005, 8, 24), ringMat);
+  ring.position.y = ri * 0.035; ring.rotation.x = Math.PI / 2; flashlightGroup.add(ring);
+}
+const flHead = new THREE.Mesh(new THREE.CylinderGeometry(0.058, 0.045, 0.08, 24),
+  new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.2, metalness: 0.95 }));
+flHead.position.y = 0.20; flashlightGroup.add(flHead);
+const lensMat = new THREE.MeshStandardMaterial({
+  color: 0xffffff, roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.3,
+  emissive: 0xfff5c0, emissiveIntensity: 1.5
+});
+const lens = new THREE.Mesh(new THREE.CircleGeometry(0.055, 24), lensMat);
+lens.position.y = 0.243; lens.rotation.x = -Math.PI / 2; flashlightGroup.add(lens);
+const bulbMat = new THREE.MeshStandardMaterial({ color: 0xfff5e0, emissive: 0xfff0c0, emissiveIntensity: 3.0, roughness: 0.1 });
+const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.025, 12, 12), bulbMat);
+bulb.position.y = 0.225; flashlightGroup.add(bulb);
+const tail = new THREE.Mesh(new THREE.SphereGeometry(0.045, 16, 8, 0, Math.PI*2, 0, Math.PI/2),
+  new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.3, metalness: 0.85 }));
+tail.position.y = -0.16; tail.rotation.x = Math.PI; flashlightGroup.add(tail);
+const flBtn = new THREE.Mesh(new THREE.SphereGeometry(0.012, 12, 12),
+  new THREE.MeshStandardMaterial({ color: 0xe94560, roughness: 0.4, metalness: 0.3, emissive: 0xe94560, emissiveIntensity: 0.3 }));
+flBtn.position.set(0.048, -0.02, 0); flBtn.scale.set(0.6, 1, 1); flashlightGroup.add(flBtn);
+
+const flPos = new THREE.Vector3(-1.6, 3.8, 1.3);
+flashlightGroup.position.copy(flPos);
+const flTarget = new THREE.Vector3(0, 0.3, 0);
+flashlightGroup.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),
+  new THREE.Vector3().subVectors(flTarget, flPos).normalize());
+lampVisuals.add(flashlightGroup);
+
+// Light cone visual
+flashlightGroup.updateMatrixWorld(true);
+const lensWorldPos = new THREE.Vector3(); lens.getWorldPosition(lensWorldPos);
+const coneTip = lensWorldPos.clone(), coneBase = new THREE.Vector3(0, 0.05, 0);
+const coneH = coneTip.distanceTo(coneBase);
+const coneDir = new THREE.Vector3().subVectors(coneBase, coneTip).normalize();
+const coneR = Math.tan(Math.PI/6) * coneH * 0.5;
+const lightConeGeo = new THREE.CylinderGeometry(0.04, coneR, coneH, 48, 1, true);
+const lightConeMat = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, side: THREE.DoubleSide,
+  uniforms: { uColor: { value: new THREE.Color(0xfff5c0) }, uOpacity: { value: 0.06 } },
+  vertexShader: `varying float vY; varying vec3 vN; varying vec3 vV;
+    void main(){ vY=uv.y; vN=normalize(normalMatrix*normal); vec4 mv=modelViewMatrix*vec4(position,1.0); vV=normalize(-mv.xyz); gl_Position=projectionMatrix*mv; }`,
+  fragmentShader: `uniform vec3 uColor; uniform float uOpacity; varying float vY; varying vec3 vN; varying vec3 vV;
+    void main(){ float e=1.0-abs(dot(vN,vV)); e=pow(e,0.6); gl_FragColor=vec4(uColor, uOpacity*e*mix(0.5,1.0,vY)); }`
+});
+const lightCone = new THREE.Mesh(lightConeGeo, lightConeMat);
+const coneMid = new THREE.Vector3().addVectors(coneTip, coneBase).multiplyScalar(0.5);
+lightCone.position.copy(coneMid);
+lightCone.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), coneDir.clone().negate());
+lampVisuals.add(lightCone);
+const lPool = new THREE.Mesh(new THREE.CircleGeometry(coneR*0.85, 64),
+  new THREE.MeshStandardMaterial({ color: 0xfff5c0, emissive: 0xfff0a0, emissiveIntensity: 0.2,
+    transparent: true, opacity: 0.2, roughness: 1, side: THREE.DoubleSide }));
+lPool.rotation.x = -Math.PI/2; lPool.position.set(0, 0.02, 0); lampVisuals.add(lPool);
+
+// Dust particles
+const pCount = 100, pGeo = new THREE.BufferGeometry(), pPos = new Float32Array(pCount*3);
+const pr1 = new THREE.Vector3().crossVectors(coneDir, new THREE.Vector3(0,0,1)).normalize();
+const pr2 = new THREE.Vector3().crossVectors(coneDir, pr1).normalize();
+for (let i=0; i<pCount; i++) {
+  const t=Math.random(), pt=new THREE.Vector3().lerpVectors(coneTip,coneBase,t);
+  const rAt=t*coneR*0.75, a=Math.random()*Math.PI*2, rr=Math.sqrt(Math.random())*rAt;
+  pPos[i*3]=pt.x+pr1.x*rr*Math.cos(a)+pr2.x*rr*Math.sin(a);
+  pPos[i*3+1]=pt.y+pr1.y*rr*Math.cos(a)+pr2.y*rr*Math.sin(a);
+  pPos[i*3+2]=pt.z+pr1.z*rr*Math.cos(a)+pr2.z*rr*Math.sin(a);
+}
+pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+const particles = new THREE.Points(pGeo, new THREE.PointsMaterial({
+  color: 0xfff8e0, size: 0.035, transparent: true, opacity: 0.3,
+  sizeAttenuation: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+lampVisuals.add(particles);
+const origPPos = pPos.slice();
+scene.add(lampVisuals);
+
+// Spot light (at scene level, not in visuals group)
+const spotLight = new THREE.SpotLight(0xfff0c0, 2.2, 16, Math.PI/6, 0.5, 1.0);
+spotLight.position.copy(lensWorldPos); spotLight.target.position.copy(flTarget);
+spotLight.castShadow = true; spotLight.shadow.mapSize.set(2048,2048); spotLight.shadow.bias = -0.001;
+scene.add(spotLight); scene.add(spotLight.target);
+
+// =============================================
+//  SUN MODE — visuals + light separated
+// =============================================
+const sunVisuals = new THREE.Group();
+// Sun direction matches lamp position: from upper-left-front (-1.6, 3.8, 1.3) toward (0, 0.3, 0)
+const sunDirVec = new THREE.Vector3(1.6, -3.5, -1.3).normalize();
+
+// Visible rays
+const rayMat = new THREE.MeshBasicMaterial({ color: 0xfff8c0, transparent: true, opacity: 0.04, depthWrite: false });
+for (let i=0; i<18; i++) {
+  const ray = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 8, 6), rayMat);
+  const ox=(Math.random()-0.5)*5, oz=(Math.random()-0.5)*5;
+  ray.position.set(ox-sunDirVec.x*2.4, 3.5, oz-sunDirVec.z*2.4);
+  ray.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), sunDirVec.clone().negate());
+  sunVisuals.add(ray);
+}
+const sunPCount = 60, sunPGeo = new THREE.BufferGeometry(), sunPP = new Float32Array(sunPCount*3);
+for (let i=0; i<sunPCount; i++) { sunPP[i*3]=(Math.random()-0.5)*4; sunPP[i*3+1]=0.3+Math.random()*3.5; sunPP[i*3+2]=(Math.random()-0.5)*4; }
+sunPGeo.setAttribute('position', new THREE.BufferAttribute(sunPP, 3));
+const sunParticles = new THREE.Points(sunPGeo, new THREE.PointsMaterial({
+  color: 0xfff8c0, size: 0.03, transparent: true, opacity: 0.25,
+  sizeAttenuation: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+sunVisuals.add(sunParticles);
+const origSunPP = sunPP.slice();
+const sunGlow = new THREE.Mesh(new THREE.SphereGeometry(0.25,16,16),
+  new THREE.MeshBasicMaterial({ color: 0xfff5a0, transparent: true, opacity: 0.7 }));
+sunGlow.position.set(-sunDirVec.x*7, -sunDirVec.y*7, -sunDirVec.z*7); sunVisuals.add(sunGlow);
+const halo = new THREE.Mesh(new THREE.CircleGeometry(0.7,32),
+  new THREE.MeshBasicMaterial({ color: 0xfff8c0, transparent: true, opacity: 0.15, side: THREE.DoubleSide }));
+halo.position.copy(sunGlow.position); sunVisuals.add(halo);
+sunVisuals.visible = false;
+scene.add(sunVisuals);
+
+// Sun lights (at scene level)
+const sunLight = new THREE.DirectionalLight(0xfffbe6, 1.6);
+sunLight.position.set(-sunDirVec.x*10, -sunDirVec.y*10, -sunDirVec.z*10);
+sunLight.castShadow = true; sunLight.shadow.mapSize.set(2048,2048);
+sunLight.shadow.camera.near=0.5; sunLight.shadow.camera.far=25;
+sunLight.shadow.camera.left=-6; sunLight.shadow.camera.right=6;
+sunLight.shadow.camera.top=6; sunLight.shadow.camera.bottom=-6;
+sunLight.shadow.bias=-0.001;
+sunLight.visible = false;
+scene.add(sunLight);
+const sunFill = new THREE.DirectionalLight(0xffe0a0, 0.3);
+sunFill.position.set(4,2,-3); sunFill.visible = false; scene.add(sunFill);
+
+// =============================================
+//  TABLE + CLOTH
+// =============================================
+const table = new THREE.Mesh(new THREE.CylinderGeometry(4,4,0.15,64),
+  new THREE.MeshStandardMaterial({ color: 0x3a3a4a, roughness: 0.7, metalness: 0.1 }));
+table.position.y = -0.075; table.receiveShadow = true; scene.add(table);
+const cloth = new THREE.Mesh(new THREE.CircleGeometry(3.2,64),
+  new THREE.MeshStandardMaterial({ color: 0x2a2a3a, roughness: 0.9, metalness: 0, side: THREE.DoubleSide }));
+cloth.rotation.x = -Math.PI/2; cloth.position.y = 0.01; cloth.receiveShadow = true; scene.add(cloth);
+
+// =============================================
+//  STILL LIFE OBJECTS (tracked for sketch)
+// =============================================
+const stillLife = []; // { mesh, origMat }
+
+function addSL(mesh) { scene.add(mesh); stillLife.push({ mesh, origMat: mesh.material }); return mesh; }
+
+// Vase
+const vaseGroup = new THREE.Group();
+const vaseMat = new THREE.MeshStandardMaterial({ color: 0xb85c38, roughness: 0.3, metalness: 0.1 });
+// Shorter vase body
+const vB = new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.42,1.2,32), vaseMat);
+vB.position.y=0.6; vB.castShadow=true; vB.receiveShadow=true; vaseGroup.add(vB); stillLife.push({mesh:vB, origMat:vaseMat});
+const vN = new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.3,0.4,32), vaseMat);
+vN.position.y=1.4; vN.castShadow=true; vaseGroup.add(vN); stillLife.push({mesh:vN, origMat:vaseMat});
+const vL = new THREE.Mesh(new THREE.TorusGeometry(0.24,0.05,12,32), vaseMat);
+vL.position.y=1.6; vL.rotation.x=Math.PI/2; vL.castShadow=true; vaseGroup.add(vL); stillLife.push({mesh:vL, origMat:vaseMat});
+
+// === BOUQUET OF FLOWERS ===
+const flowerColors = [0xe84393, 0xfd79a8, 0xffeaa7, 0xdfe6e9, 0xf39c12, 0xe17055, 0xa29bfe];
+const stemColor = new THREE.MeshStandardMaterial({ color: 0x2d5a27, roughness: 0.6 });
+
+// Leaf materials — 3 shades of green for variety
+const leafMat = new THREE.MeshStandardMaterial({ color: 0x3a7d32, roughness: 0.5 });
+const leafMat2 = new THREE.MeshStandardMaterial({ color: 0x2e6b28, roughness: 0.55 });
+const leafMat3 = new THREE.MeshStandardMaterial({ color: 0x4a9040, roughness: 0.45 });
+const leafMats = [leafMat, leafMat2, leafMat3];
+
+// Shared leaf geometry — flattened sphere (ellipsoid) visible from all angles
+const leafSphereGeo = new THREE.SphereGeometry(1, 10, 8);
+
+function addLeaf3D(parent, x, y, z, sx, sy, sz, ry, rz, matIdx) {
+  const mat = leafMats[matIdx % 3];
+  const leaf = new THREE.Mesh(leafSphereGeo, mat);
+  leaf.position.set(x, y, z);
+  leaf.scale.set(sx, sy, sz);
+  leaf.rotation.set(0, ry, rz);
+  leaf.castShadow = true;
+  parent.add(leaf);
+  stillLife.push({ mesh: leaf, origMat: mat });
+}
+
+// Flower stems + heads (lower heights, tighter cluster)
+const bouquetData = [
+  { x: 0, z: 0, h: 0.8, tilt: 0.05, flowerR: 0.13 },
+  { x: 0.06, z: 0.05, h: 0.95, tilt: 0.18, flowerR: 0.11 },
+  { x: -0.07, z: 0.04, h: 0.9, tilt: -0.15, flowerR: 0.12 },
+  { x: 0.04, z: -0.06, h: 0.75, tilt: 0.1, flowerR: 0.10 },
+  { x: -0.05, z: -0.05, h: 1.0, tilt: -0.12, flowerR: 0.14 },
+  { x: 0.03, z: 0.08, h: 0.85, tilt: 0.22, flowerR: 0.10 },
+  { x: -0.08, z: -0.02, h: 0.92, tilt: -0.2, flowerR: 0.11 },
+];
+bouquetData.forEach((fd, i) => {
+  const stemG = new THREE.Group();
+  // Stem — thinner so leaves dominate
+  const st = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.01, fd.h, 6), stemColor);
+  st.position.y = fd.h / 2 + 1.5;
+  st.castShadow = true;
+  stemG.add(st); stillLife.push({ mesh: st, origMat: stemColor });
+  // Flower head — sphere
+  const fMat = new THREE.MeshStandardMaterial({ color: flowerColors[i], roughness: 0.4 });
+  const flower = new THREE.Mesh(new THREE.SphereGeometry(fd.flowerR, 16, 16), fMat);
+  flower.position.y = fd.h + 1.5;
+  flower.castShadow = true;
+  stemG.add(flower); stillLife.push({ mesh: flower, origMat: fMat });
+  // Petals — small flattened spheres around the center
+  const petalMat = new THREE.MeshStandardMaterial({ color: flowerColors[(i+1)%5], roughness: 0.35 });
+  for (let p = 0; p < 5; p++) {
+    const pa = (p / 5) * Math.PI * 2;
+    const petal = new THREE.Mesh(new THREE.SphereGeometry(fd.flowerR * 0.6, 8, 8), petalMat);
+    petal.scale.set(1, 0.4, 1);
+    petal.position.set(
+      Math.cos(pa) * fd.flowerR * 0.9,
+      fd.h + 1.5,
+      Math.sin(pa) * fd.flowerR * 0.9
+    );
+    petal.castShadow = true;
+    stemG.add(petal); stillLife.push({ mesh: petal, origMat: petalMat });
+  }
+  // Tilt the whole stem outward
+  stemG.position.set(fd.x, 0, fd.z);
+  stemG.rotation.x = fd.tilt;
+  stemG.rotation.z = fd.tilt * 0.7;
+  vaseGroup.add(stemG);
+});
+
+// === DENSE 3D FOLIAGE ===
+// Layer 1: Dense ring of large leaves right at the vase opening (y 1.5-1.7)
+// These hide where stems enter the vase and create volume at the base
+for (let i = 0; i < 12; i++) {
+  const a = (i / 12) * Math.PI * 2;
+  const r = 0.18 + Math.random() * 0.08;
+  addLeaf3D(vaseGroup,
+    Math.cos(a) * r, 1.55 + Math.random() * 0.15, Math.sin(a) * r,
+    0.12, 0.06, 0.18,  // wide flat ellipsoid
+    a + Math.random() * 0.5, -0.3 - Math.random() * 0.3,
+    i);
+}
+
+// Layer 2: Mid-height foliage mass (y 1.7-2.0) — big puffy leaves
+for (let i = 0; i < 14; i++) {
+  const a = (i / 14) * Math.PI * 2 + 0.2;
+  const r = 0.08 + Math.random() * 0.14;
+  addLeaf3D(vaseGroup,
+    Math.cos(a) * r, 1.7 + Math.random() * 0.3, Math.sin(a) * r,
+    0.14, 0.08, 0.18,
+    a + Math.random() * 0.8, -0.15 - Math.random() * 0.25,
+    i);
+}
+
+// Layer 3: Inner foliage fill (y 1.6-1.9) — smaller leaves filling gaps
+for (let i = 0; i < 10; i++) {
+  const a = (i / 10) * Math.PI * 2 + 0.5;
+  const r = 0.03 + Math.random() * 0.1;
+  addLeaf3D(vaseGroup,
+    Math.cos(a) * r, 1.6 + Math.random() * 0.35, Math.sin(a) * r,
+    0.10, 0.06, 0.13,
+    a + Math.random(), -0.1 - Math.random() * 0.2,
+    i);
+}
+
+// Layer 4: Upper leaves poking between flowers (y 2.0-2.3) — smaller
+for (let i = 0; i < 8; i++) {
+  const a = (i / 8) * Math.PI * 2 + 0.3;
+  const r = 0.05 + Math.random() * 0.08;
+  addLeaf3D(vaseGroup,
+    Math.cos(a) * r, 2.0 + Math.random() * 0.3, Math.sin(a) * r,
+    0.08, 0.05, 0.12,
+    a, -0.05 - Math.random() * 0.15,
+    i);
+}
+
+// Layer 5: A few drooping leaves hanging over the vase edge for natural look
+const droopData = [
+  { a: 0.3, r: 0.26, y: 1.52, sx: 0.13, sy: 0.04, sz: 0.20, rz: -0.7 },
+  { a: 1.5, r: 0.24, y: 1.50, sx: 0.11, sy: 0.04, sz: 0.17, rz: -0.8 },
+  { a: 2.8, r: 0.27, y: 1.53, sx: 0.14, sy: 0.05, sz: 0.19, rz: -0.65 },
+  { a: 4.0, r: 0.25, y: 1.51, sx: 0.12, sy: 0.04, sz: 0.18, rz: -0.75 },
+  { a: 5.2, r: 0.23, y: 1.54, sx: 0.10, sy: 0.04, sz: 0.16, rz: -0.6 },
+];
+droopData.forEach((d, i) => {
+  addLeaf3D(vaseGroup,
+    Math.cos(d.a) * d.r, d.y, Math.sin(d.a) * d.r,
+    d.sx, d.sy, d.sz,
+    d.a, d.rz, i);
+});
+
+vaseGroup.position.set(-0.8,0,0.3); scene.add(vaseGroup);
+
+const apple = addSL(new THREE.Mesh(new THREE.SphereGeometry(0.55,32,32),
+  new THREE.MeshStandardMaterial({ color: 0x4a8f4a, roughness: 0.4, metalness: 0.05 })));
+apple.position.set(0.9,0.55,0.6); apple.castShadow=true; apple.receiveShadow=true;
+const aStem = addSL(new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.02,0.2,8),
+  new THREE.MeshStandardMaterial({ color: 0x5a3a1a, roughness: 0.8 })));
+aStem.position.set(0.9,1.15,0.6); aStem.castShadow=true;
+
+const box = addSL(new THREE.Mesh(new THREE.BoxGeometry(1.2,0.9,0.9),
+  new THREE.MeshStandardMaterial({ color: 0xf0ede8, roughness: 0.6, metalness: 0.05 })));
+box.position.set(0.2,0.45,-0.9); box.rotation.y=0.4; box.castShadow=true; box.receiveShadow=true;
+
+const cone2 = addSL(new THREE.Mesh(new THREE.ConeGeometry(0.45,1.3,32),
+  new THREE.MeshStandardMaterial({ color: 0xc4a35a, roughness: 0.35, metalness: 0.15 })));
+cone2.position.set(-1.2,0.65,-0.7); cone2.castShadow=true; cone2.receiveShadow=true;
+
+const bBody = addSL(new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.3,1.4,32),
+  new THREE.MeshStandardMaterial({ color: 0x2e5e4e, roughness: 0.15, metalness: 0.3 })));
+bBody.position.set(1.5,0.7,-0.3); bBody.castShadow=true; bBody.receiveShadow=true;
+const bNeck = addSL(new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.2,0.6,32),
+  new THREE.MeshStandardMaterial({ color: 0x2e5e4e, roughness: 0.15, metalness: 0.3 })));
+bNeck.position.set(1.5,1.7,-0.3); bNeck.castShadow=true;
+
+// Lemon — irregular elongated shape with bumpy surface
+const lemonGeo = new THREE.SphereGeometry(0.28, 32, 24);
+const lemonPos = lemonGeo.attributes.position;
+const lemonNorm = lemonGeo.attributes.normal;
+for (let i = 0; i < lemonPos.count; i++) {
+  let x = lemonPos.getX(i), y = lemonPos.getY(i), z = lemonPos.getZ(i);
+  // Elongate along Z axis for lemon shape
+  z *= 1.45;
+  // Taper toward the ends (pointy tips)
+  const t = Math.abs(z) / (0.28 * 1.45);
+  const taper = 1.0 - 0.35 * t * t;
+  x *= taper; y *= taper;
+  // Slight nipple bumps at each end
+  if (t > 0.85) {
+    const bump = (t - 0.85) * 2.5;
+    z += Math.sign(z) * bump * 0.04;
+  }
+  // Bumpy/rough surface — small random displacement
+  const nx = lemonNorm.getX(i), ny = lemonNorm.getY(i), nz = lemonNorm.getZ(i);
+  const noise = (Math.sin(x*47.3 + y*31.7 + z*23.1) * 0.5 + Math.sin(x*19.1 + z*41.3) * 0.3 + Math.sin(y*53.7 + z*17.9) * 0.2) * 0.012;
+  x += nx * noise; y += ny * noise; z += nz * noise;
+  lemonPos.setXYZ(i, x, y, z);
+}
+lemonGeo.computeVertexNormals();
+const lemonMat = new THREE.MeshStandardMaterial({
+  color: 0xf0d030, roughness: 0.7, metalness: 0,
+  bumpScale: 0.02
+});
+const lemon = addSL(new THREE.Mesh(lemonGeo, lemonMat));
+lemon.position.set(0.0, 0.28, 1.1);
+lemon.rotation.set(0.1, 0.4, 0.15); // slight tilt for natural look
+lemon.castShadow=true; lemon.receiveShadow=true;
+
+const pyramid = addSL(new THREE.Mesh(new THREE.ConeGeometry(0.45, 0.75, 4),
+  new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.65, metalness: 0.08 })));
+pyramid.position.set(0.55, 1.28, -0.65); pyramid.rotation.y = Math.PI/6;
+pyramid.castShadow=true; pyramid.receiveShadow=true;
+
+// Classic coffee cup on the box — SOLID construction
+const cupGroup = new THREE.Group();
+const cupMat = new THREE.MeshStandardMaterial({ color: 0xc0281e, roughness: 0.35, metalness: 0.1 });
+
+// Cup body — closed cylinder (solid, no see-through)
+const cupBody = new THREE.Mesh(new THREE.CylinderGeometry(0.20, 0.15, 0.32, 32), cupMat);
+cupBody.position.y = 0.16;
+cupBody.castShadow = true; cupBody.receiveShadow = true;
+cupGroup.add(cupBody); stillLife.push({ mesh: cupBody, origMat: cupMat });
+
+// Rim — torus at top lip
+const cupRim = new THREE.Mesh(new THREE.TorusGeometry(0.20, 0.015, 8, 32), cupMat);
+cupRim.position.y = 0.32; cupRim.rotation.x = Math.PI / 2;
+cupGroup.add(cupRim); stillLife.push({ mesh: cupRim, origMat: cupMat });
+
+// Classic round ear handle — D-shaped loop attached to cup wall
+const handlePath = new THREE.CurvePath();
+const hX = 0.20; // attach at cup wall
+const hMidY = 0.16; // center height
+handlePath.add(new THREE.CubicBezierCurve3(
+  new THREE.Vector3(hX, hMidY + 0.12, 0),
+  new THREE.Vector3(hX + 0.18, hMidY + 0.10, 0),
+  new THREE.Vector3(hX + 0.18, hMidY - 0.10, 0),
+  new THREE.Vector3(hX, hMidY - 0.10, 0)
+));
+const handleGeo = new THREE.TubeGeometry(handlePath, 20, 0.02, 8, false);
+const handle = new THREE.Mesh(handleGeo, cupMat);
+handle.castShadow = true;
+cupGroup.add(handle); stillLife.push({ mesh: handle, origMat: cupMat });
+
+// Position on top of box
+cupGroup.position.set(0.0, 1.06, -0.85);
+scene.add(cupGroup);
+
+// =============================================
+//  SKETCH MATERIALS
+// =============================================
+const blackMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+const shadowObjMat = new THREE.MeshLambertMaterial({ color: 0xf8f7f5 }); // nearly white, casts shadow
+const shadowGroundMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+const origTableMat = table.material, origClothMat = cloth.material;
+
+// =============================================
+//  OBJECT TOGGLE
+// =============================================
+const objMap = {
+  vase: [vaseGroup],
+  apple: [apple, aStem],
+  box: [box],
+  cone: [cone2],
+  bottle: [bBody, bNeck],
+  lemon: [lemon],
+  pyramid: [pyramid],
+  cup: [cupGroup],
+};
+
+document.querySelectorAll('#obj-panel input[data-obj]').forEach(cb => {
+  cb.addEventListener('change', () => {
+    const key = cb.dataset.obj;
+    objMap[key].forEach(m => { m.visible = cb.checked; });
+  });
+});
+
+const toggleAllBtn = document.getElementById('obj-toggle-all');
+let allVisible = true;
+toggleAllBtn.addEventListener('click', () => {
+  allVisible = !allVisible;
+  toggleAllBtn.textContent = allVisible ? 'Dölj alla' : 'Visa alla';
+  document.querySelectorAll('#obj-panel input[data-obj]').forEach(cb => {
+    cb.checked = allVisible;
+    objMap[cb.dataset.obj].forEach(m => { m.visible = allVisible; });
+  });
+});
+
+// =============================================
+//  SKETCH RENDERING
+// =============================================
+function renderSketch() {
+  // Sync camera
+  const skCam = camera.clone();
+
+  // Save visibility
+  const savedLampVis = lampVisuals.visible, savedSunVis = sunVisuals.visible;
+  const savedFog = scene.fog;
+
+  // Hide all non-essential visuals
+  lampVisuals.visible = false;
+  sunVisuals.visible = false;
+  scene.fog = null;
+
+  if (sketchMode === 1 || sketchMode === 3) {
+    // Render silhouettes to sketchRT (used by mode 1 and mode 3)
+    stillLife.forEach(o => o.mesh.material = blackMat);
+    table.visible = false; cloth.visible = false;
+
+    sketchRenderer.setRenderTarget(sketchRT);
+    sketchRenderer.setClearColor(0xffffff);
+    sketchRenderer.render(scene, skCam);
+
+    table.visible = true; cloth.visible = true;
+    stillLife.forEach(o => o.mesh.material = o.origMat);
+
+    if (sketchMode === 1) {
+      // MODE 1: Edge detection only
+      edgeMaterial.uniforms.tDiffuse.value = sketchRT.texture;
+      sketchRenderer.setRenderTarget(null);
+      sketchRenderer.render(ppScene, ppCamera);
+    }
+  }
+
+  if (sketchMode === 2 || sketchMode === 3) {
+    // Render shadows
+    stillLife.forEach(o => o.mesh.material = shadowObjMat);
+    table.material = shadowGroundMat; cloth.material = shadowGroundMat;
+    const useLamp = lightMode === 'lamp';
+    spotLight.visible = useLamp; sunLight.visible = !useLamp;
+    const savedAmbInt = ambient.intensity;
+    ambient.intensity = 0.7; ambient.color.set(0xffffff);
+
+    if (sketchMode === 2) {
+      // MODE 2: Shadows only → render to screen
+      sketchRenderer.setRenderTarget(null);
+      sketchRenderer.setClearColor(0xfaf8f5);
+      sketchRenderer.render(scene, skCam);
+    } else {
+      // MODE 3: Shadows to render target for combining
+      sketchRenderer.setRenderTarget(shadowRT);
+      sketchRenderer.setClearColor(0xfaf8f5);
+      sketchRenderer.render(scene, skCam);
+    }
+
+    // Restore
+    ambient.intensity = savedAmbInt;
+    ambient.color.set(lightMode === 'lamp' ? 0x404060 : 0x606880);
+    stillLife.forEach(o => o.mesh.material = o.origMat);
+    table.material = origTableMat; cloth.material = origClothMat;
+    spotLight.visible = lightMode === 'lamp'; sunLight.visible = lightMode === 'sun';
+  }
+
+  if (sketchMode === 3) {
+    // MODE 3: Combine edges + shadows
+    combineMaterial.uniforms.tEdges.value = sketchRT.texture;
+    combineMaterial.uniforms.tShadow.value = shadowRT.texture;
+    sketchRenderer.setRenderTarget(null);
+    sketchRenderer.render(combineScene, ppCamera);
+  }
+
+  // Restore visuals
+  lampVisuals.visible = savedLampVis;
+  sunVisuals.visible = savedSunVis;
+  scene.fog = savedFog;
+}
+
+// =============================================
+//  LIGHT MODE
+// =============================================
+function setLightMode(mode) {
+  lightMode = mode;
+  document.getElementById('btn-lamp').classList.toggle('active', mode==='lamp');
+  document.getElementById('btn-sun').classList.toggle('active', mode==='sun');
+  if (mode === 'lamp') {
+    lampVisuals.visible = true; sunVisuals.visible = false;
+    spotLight.visible = true; sunLight.visible = false; sunFill.visible = false;
+    scene.fog = new THREE.FogExp2(0x2e3b20, 0.015);
+    renderer.setClearColor(0x2e3b20);
+    ambient.intensity = 0.3 * brightness; ambient.color.set(0x404060);
+    spotLight.intensity = 2.2 * brightness;
+    document.getElementById('info-light').textContent = 'Ficklampa';
+    document.getElementById('info-light2').textContent = 'Ficklampa';
+  } else {
+    lampVisuals.visible = false; sunVisuals.visible = true;
+    spotLight.visible = false; sunLight.visible = true; sunFill.visible = true;
+    scene.fog = new THREE.FogExp2(0x354228, 0.008);
+    renderer.setClearColor(0x354228);
+    ambient.intensity = 0.45 * brightness; ambient.color.set(0x606880);
+    sunLight.intensity = 1.6 * brightness; sunFill.intensity = 0.3 * brightness;
+    document.getElementById('info-light').textContent = 'Solljus';
+    document.getElementById('info-light2').textContent = 'Solljus';
+  }
+  renderer.toneMappingExposure = brightness;
+}
+document.getElementById('btn-lamp').addEventListener('click', () => setLightMode('lamp'));
+document.getElementById('btn-sun').addEventListener('click', () => setLightMode('sun'));
+
+// =============================================
+//  BRIGHTNESS CONTROL
+// =============================================
+let brightness = 1.0; // multiplier 0.1 – 2.0
+const baseLamp = { spot: 2.2, ambient: 0.3 };
+const baseSun = { sun: 1.6, fill: 0.3, ambient: 0.45 };
+
+const brightSlider = document.getElementById('brightness-slider');
+const brightVal = document.getElementById('brightness-val');
+brightSlider.addEventListener('input', () => {
+  brightness = parseFloat(brightSlider.value) / 100;
+  brightVal.textContent = Math.round(brightness * 100) + '%';
+  applyBrightness();
+});
+function applyBrightness() {
+  if (lightMode === 'lamp') {
+    spotLight.intensity = baseLamp.spot * brightness;
+    ambient.intensity = baseLamp.ambient * brightness;
+  } else {
+    sunLight.intensity = baseSun.sun * brightness;
+    sunFill.intensity = baseSun.fill * brightness;
+    ambient.intensity = baseSun.ambient * brightness;
+  }
+  renderer.toneMappingExposure = brightness;
+}
+
+// =============================================
+//  SKETCH MODE
+// =============================================
+function setSketchMode(mode) {
+  sketchMode = mode;
+  document.getElementById('sk-1').classList.toggle('active', mode===1);
+  document.getElementById('sk-2').classList.toggle('active', mode===2);
+  document.getElementById('sk-3').classList.toggle('active', mode===3);
+  const labels = { 1: 'Konturer — siluettlinjer', 2: 'Skuggor — ljus & skuggfall', 3: 'Konturer + skuggor' };
+  document.getElementById('sketch-label').textContent = labels[mode];
+}
+document.getElementById('sk-1').addEventListener('click', () => setSketchMode(1));
+document.getElementById('sk-2').addEventListener('click', () => setSketchMode(2));
+document.getElementById('sk-3').addEventListener('click', () => setSketchMode(3));
+
+// =============================================
+//  COMPASS
+// =============================================
+function buildCompass() {
+  const svg = document.getElementById('compass-svg');
+  const cx=100, cy=100, r=70;
+  // Subtle ring
+  let h = `<circle cx="${cx}" cy="${cy}" r="${r-16}" fill="none" stroke="#0f3460" stroke-width="1" stroke-dasharray="4,4"/>`;
+  // Center dot
+  h += `<circle cx="${cx}" cy="${cy}" r="6" fill="#0f3460" stroke="#e94560" stroke-width="2"/>`;
+  views.forEach((v, i) => {
+    const rad=(v.angle-90)*Math.PI/180;
+    const bx=cx+r*Math.cos(rad), by=cy+r*Math.sin(rad);
+    // Direction toward center
+    const toCenter = rad + Math.PI;
+    // Big chevron arrow — wide and bold
+    const aSize = i%2===0 ? 18 : 14; // cardinal arrows bigger
+    const aWidth = i%2===0 ? 14 : 10;
+    const strokeW = i%2===0 ? 4 : 3;
+    // Tip point (closest to center)
+    const tipX = bx + Math.cos(toCenter) * (aSize * 0.6);
+    const tipY = by + Math.sin(toCenter) * (aSize * 0.6);
+    // Two tail points (away from center, spread out)
+    const tailCX = bx - Math.cos(toCenter) * (aSize * 0.4);
+    const tailCY = by - Math.sin(toCenter) * (aSize * 0.4);
+    const lx = tailCX + Math.cos(toCenter + Math.PI/2) * aWidth;
+    const ly = tailCY + Math.sin(toCenter + Math.PI/2) * aWidth;
+    const rx = tailCX + Math.cos(toCenter - Math.PI/2) * aWidth;
+    const ry2 = tailCY + Math.sin(toCenter - Math.PI/2) * aWidth;
+    // Invisible hit area
+    h += `<polygon points="${tipX},${tipY} ${lx},${ly} ${rx},${ry2}"
+      fill="transparent" stroke="transparent" stroke-width="12"
+      class="compass-btn" data-index="${i}" style="cursor:pointer" id="compass-dot-${i}"/>`;
+    // Visible chevron: two thick lines forming a > shape pointing inward
+    h += `<polyline points="${lx},${ly} ${tipX},${tipY} ${rx},${ry2}"
+      fill="none" stroke="${i===currentView?'#e94560':'#8899aa'}" stroke-width="${strokeW}"
+      stroke-linecap="round" stroke-linejoin="round" pointer-events="none"
+      id="compass-arrow-${i}"/>`;
+  });
+  svg.innerHTML = h;
+  svg.querySelectorAll('.compass-btn').forEach(b =>
+    b.addEventListener('click', () => setView(parseInt(b.dataset.index))));
+}
+function updateCompass() {
+  views.forEach((v,i) => {
+    const arrow = document.getElementById(`compass-arrow-${i}`);
+    if (arrow) {
+      arrow.setAttribute('stroke', i===currentView ? '#e94560' : '#8899aa');
+      arrow.setAttribute('stroke-width', i===currentView ? (i%2===0?'5':'4') : (i%2===0?'4':'3'));
+    }
+  });
+}
+
+// =============================================
+//  VIEW CONTROL
+// =============================================
+function setView(idx) {
+  currentView = idx;
+  targetAngle = views[idx].angle * Math.PI / 180;
+  while (targetAngle - currentAngle > Math.PI) targetAngle -= Math.PI * 2;
+  while (targetAngle - currentAngle < -Math.PI) targetAngle += Math.PI * 2;
+  const v = views[idx];
+  document.getElementById('angle-label').textContent = `${v.name} — ${v.angle}°`;
+  document.getElementById('info-view').textContent = v.name;
+  document.getElementById('info-angle').textContent = `${v.angle}°`;
+  document.getElementById('info-view2').textContent = v.name;
+  document.getElementById('info-angle2').textContent = `${v.angle}°`;
+  updateCompass();
+}
+const autoBtn = document.getElementById('auto-btn');
+autoBtn.addEventListener('click', () => {
+  autoRotate = !autoRotate;
+  autoBtn.classList.toggle('active', autoRotate);
+  autoBtn.innerHTML = autoRotate ? '&#9724; Stopp' : '&#9654; Auto';
+  if (autoRotate) autoTimer = setInterval(() => setView((currentView+1)%8), 2500);
+  else clearInterval(autoTimer);
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key==='ArrowRight'||e.key==='ArrowDown') { e.preventDefault(); setView((currentView+1)%8); }
+  else if (e.key==='ArrowLeft'||e.key==='ArrowUp') { e.preventDefault(); setView((currentView+7)%8); }
+  else if (e.key===' ') { e.preventDefault(); autoBtn.click(); }
+  else if (e.key==='1') { setLightMode('lamp'); }
+  else if (e.key==='2') { setLightMode('sun'); }
+  else if (e.key==='q') { setSketchMode(1); }
+  else if (e.key==='w') { setSketchMode(2); }
+  else if (e.key==='e') { setSketchMode(3); }
+});
+
+// =============================================
+//  ANIMATION LOOP
+// =============================================
+function animate() {
+  requestAnimationFrame(animate);
+  currentAngle += (targetAngle - currentAngle) * 0.06;
+  camera.position.x = cameraRadius * Math.sin(currentAngle);
+  camera.position.z = cameraRadius * Math.cos(currentAngle);
+  camera.position.y = cameraHeight;
+  camera.lookAt(0, 0.8, 0);
+
+  const t = performance.now() * 0.001;
+
+  if (lightMode === 'lamp') {
+    const pos = particles.geometry.attributes.position.array;
+    for (let i=0; i<pCount; i++) {
+      pos[i*3]   = origPPos[i*3]   + Math.sin(t*0.3+i*1.7)*0.06;
+      pos[i*3+1] = origPPos[i*3+1] + Math.sin(t*0.2+i*2.3)*0.04;
+      pos[i*3+2] = origPPos[i*3+2] + Math.cos(t*0.25+i*1.1)*0.06;
+    }
+    particles.geometry.attributes.position.needsUpdate = true;
+    bulbMat.emissiveIntensity = 2.5 + Math.sin(t*8)*0.1;
+  }
+  if (lightMode === 'sun') {
+    const sp = sunParticles.geometry.attributes.position.array;
+    for (let i=0; i<sunPCount; i++) {
+      sp[i*3]   = origSunPP[i*3]   + Math.sin(t*0.15+i*2.1)*0.08;
+      sp[i*3+1] = origSunPP[i*3+1] + Math.sin(t*0.1+i*1.3)*0.05;
+      sp[i*3+2] = origSunPP[i*3+2] + Math.cos(t*0.12+i*1.8)*0.08;
+    }
+    sunParticles.geometry.attributes.position.needsUpdate = true;
+    halo.lookAt(camera.position);
+  }
+
+  // Render main 3D scene
+  renderer.render(scene, camera);
+
+  // Render sketch
+  renderSketch();
+}
+
+// =============================================
+//  INIT
+// =============================================
+buildCompass();
+setView(0);
+setLightMode('lamp');
+setSketchMode(1);
+animate();
+</script>
+</body>
+</html>
